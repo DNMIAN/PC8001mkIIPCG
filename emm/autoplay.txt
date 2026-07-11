@@ -1,0 +1,34 @@
+config.binを書き換えてpicotoolで書き込みます。
+
+ config.bin サイズ16Bytes
+  0000 : 63 6F 6E 66 69 67 cc cc cc rr rr rr vv dd ee 00
+
+  eeを=1にすると有効になります。IOアドレス78h～7Bhを使用する機器を実装したまま有効しないでください、最悪壊れます。
+
+ picotool.exe load -v -x config.bin -t bin -o 0x102fff00
+
+ 上記は電源投入時の初期状態となりますが、機能有効無効を以下でも切り替えられます。(保存はされません)
+  out 15,&hce:out 4,&he:out 4,&he:out 4,&he
+  ?hex$(inp(&hec)) で先頭から4ビット目(---x----) が1なら有効状態です。
+
+
+自動演奏データをemmに載せて演奏する
+  1. bugfire2009さん ( https://bugfire2009.ojaru.jp/ ) のDumpListEditorや配布されている音楽データを実行する
+  2. プレイヤーが起動したらESCで停止して終了（または本体リセットでもだいたい大丈夫）
+  3. emmmml.CMT（以下のコード）をBASICロードして実行
+    8B00hからロードされている音楽データをemmの0000hからコピーして再生します
+	終了検出がかなり適当なので表示アドレスが進みすぎかなと思ったらSTOPしてgoto110で演奏
+
+10 CLEAR 10,&H8AFF
+20 ST=&H8B00:AD=0:BK=0
+30 OUT &H78,0:OUT &H79,0
+40 DT=PEEK(ST+AD):OUT &H7A,DT
+50 IF (AD MOD 256)=0 THEN PRINT HEX$(ST+AD)
+60 AD=AD+1
+70 IF BK=&H73 AND DT=&H0 THEN 100
+80 BK=DT
+90 GOTO 40
+100 PRINT HEX$(ST+AD)
+110 OUT &H78,0:OUT &H79,0
+120 OUT 5,&H80
+130 PRINT INP(&HEC)
